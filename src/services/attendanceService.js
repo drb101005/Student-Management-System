@@ -7,7 +7,8 @@ import {
   orderBy,
   query,
   serverTimestamp,
-  setDoc
+  setDoc,
+  where
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
@@ -46,3 +47,17 @@ export const getAttendanceCount = async () => {
   return snapshot.size;
 };
 
+export const subscribeToAttendanceByStudentId = (studentId, callback) => {
+  const attendanceQuery = query(attendanceCollection, where('studentId', '==', studentId));
+
+  return onSnapshot(attendanceQuery, (snapshot) => {
+    const records = snapshot.docs
+      .map((record) => ({
+        id: record.id,
+        ...record.data()
+      }))
+      .sort((first, second) => second.date.localeCompare(first.date));
+
+    callback(records);
+  });
+};

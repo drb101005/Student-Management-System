@@ -4,7 +4,8 @@ const navItems = [
   { label: 'Dashboard', to: '/' },
   { label: 'Students', to: '/students' },
   { label: 'Attendance', to: '/attendance' },
-  { label: 'Results', to: '/results' }
+  { label: 'Results', to: '/results' },
+  { label: 'Admin', to: '/admin' }
 ];
 
 const Sidebar = ({ isOpen, onClose }) => (
@@ -27,7 +28,7 @@ const Sidebar = ({ isOpen, onClose }) => (
         <p className="text-xs uppercase tracking-[0.3em] text-teal-300">Campus Flow</p>
         <h2 className="mt-2 font-display text-3xl font-bold text-white">Control Center</h2>
         <p className="mt-3 text-sm text-slate-400">
-          A simple workspace for students, attendance, and results.
+          A simple workspace for students, attendance, results, and admin access.
         </p>
       </div>
 
@@ -60,4 +61,3 @@ const Sidebar = ({ isOpen, onClose }) => (
 );
 
 export default Sidebar;
-

@@ -12,11 +12,23 @@ const defaultValues = {
   status: 'active'
 };
 
+const normalizeValues = (values) => ({
+  studentId: values?.studentId ?? '',
+  fullName: values?.fullName ?? '',
+  email: values?.email ?? '',
+  phone: values?.phone ?? '',
+  class: values?.class ?? '',
+  section: values?.section ?? '',
+  rollNumber: values?.rollNumber ?? '',
+  parentName: values?.parentName ?? '',
+  status: values?.status ?? 'active'
+});
+
 const StudentForm = ({ initialValues, onSubmit, onCancel, isSubmitting }) => {
   const [formData, setFormData] = useState(defaultValues);
 
   useEffect(() => {
-    setFormData(initialValues ? { ...defaultValues, ...initialValues } : defaultValues);
+    setFormData(initialValues ? normalizeValues(initialValues) : defaultValues);
   }, [initialValues]);
 
   const handleChange = (event) => {
@@ -29,9 +41,9 @@ const StudentForm = ({ initialValues, onSubmit, onCancel, isSubmitting }) => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    await onSubmit(formData);
+    const wasSuccessful = await onSubmit(formData);
 
-    if (!initialValues) {
+    if (!initialValues && wasSuccessful) {
       setFormData(defaultValues);
     }
   };
@@ -202,4 +214,3 @@ const StudentForm = ({ initialValues, onSubmit, onCancel, isSubmitting }) => {
 };
 
 export default StudentForm;
-

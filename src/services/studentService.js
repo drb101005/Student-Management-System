@@ -3,14 +3,19 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
+  where,
   updateDoc
 } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth, db } from '../firebase/config';
+import { saveUserProfile } from './userService';
 
 const studentsCollection = collection(db, 'students');
 
@@ -38,6 +43,28 @@ export const createStudent = (studentData) =>
     createdAt: serverTimestamp()
   });
 
+export const registerStudentAccount = async ({ password, ...studentData }) => {
+  const credentials = await createUserWithEmailAndPassword(auth, studentData.email, password);
+  const uid = credentials.user.uid;
+
+  await saveUserProfile(uid, {
+    role: 'student',
+    fullName: studentData.fullName,
+    email: studentData.email,
+    studentId: studentData.studentId,
+    studentDocId: uid
+  });
+
+  await setDoc(doc(db, 'students', uid), {
+    ...studentData,
+    authUid: uid,
+    role: 'student',
+    createdAt: serverTimestamp()
+  });
+
+  return credentials.user;
+};
+
 export const updateStudent = (studentDocId, studentData) =>
   updateDoc(doc(db, 'students', studentDocId), studentData);
 
@@ -48,3 +75,15 @@ export const getStudentsCount = async () => {
   return snapshot.size;
 };
 
+export const getStudentRecordByAuthUid = async (uid) => {
+  const studentDoc = await getDoc(doc(db, 'students', uid));
+
+  if (studentDoc.exists()) {
+    return mapDocument(studentDoc);
+  }
+
+  const fallbackQuery = query(studentsCollection, where('authUid', '==', uid));
+  const fallbackSnapshot = await getDocs(fallbackQuery);
+
+  return fallbackSnapshot.docs[0] ? mapDocument(fallbackSnapshot.docs[0]) : null;
+};

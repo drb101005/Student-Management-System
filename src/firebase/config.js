@@ -12,7 +12,16 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-const missingKeys = Object.entries(firebaseConfig)
+const requiredConfig = {
+  apiKey: firebaseConfig.apiKey,
+  authDomain: firebaseConfig.authDomain,
+  projectId: firebaseConfig.projectId,
+  storageBucket: firebaseConfig.storageBucket,
+  messagingSenderId: firebaseConfig.messagingSenderId,
+  appId: firebaseConfig.appId
+};
+
+const missingKeys = Object.entries(requiredConfig)
   .filter(([, value]) => !value)
   .map(([key]) => key);
 
@@ -26,5 +35,6 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const createSecondaryApp = (name) => initializeApp(firebaseConfig, name);
+export { firebaseConfig };
 export default app;
-
