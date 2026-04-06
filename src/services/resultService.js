@@ -1,70 +1,79 @@
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  where
-} from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { apiRequest } from './apiClient';
 
-const resultsCollection = collection(db, 'results');
+const resultListeners = new Set();
+const resultByStudentListeners = new Map();
+
+const notifyResultListeners = async () => {
+  const records = await apiRequest('/results');
+
+  resultListeners.forEach((listener) => listener(records));
+
+  const studentEntries = Array.from(resultByStudentListeners.entries());
+  await Promise.all(
+    studentEntries.map(async ([studentId, listeners]) => {
+      const studentRecords = await apiRequest(`/results/student/${studentId}`);
+      listeners.forEach((listener) => listener(studentRecords));
+    })
+  );
+};
 
 export const subscribeToResults = (callback) => {
-  const resultsQuery = query(resultsCollection, orderBy('createdAt', 'desc'));
+  resultListeners.add(callback);
 
-  return onSnapshot(resultsQuery, (snapshot) => {
-    callback(
-      snapshot.docs.map((record) => {
-        const data = record.data();
-
-        return {
-          id: record.id,
-          ...data,
-          createdAt: data.createdAt?.toDate?.()?.toISOString() ?? null
-        };
-      })
-    );
-  });
-};
-
-export const createResult = (resultData) =>
-  addDoc(resultsCollection, {
-    ...resultData,
-    createdAt: serverTimestamp()
+  notifyResultListeners().catch((error) => {
+    console.error(error);
+    callback([]);
   });
 
-export const deleteResult = (resultId) => deleteDoc(doc(db, 'results', resultId));
-
-export const getResultsCount = async () => {
-  const snapshot = await getDocs(resultsCollection);
-  return snapshot.size;
+  return () => {
+    resultListeners.delete(callback);
+  };
 };
+
+export const createResult = async (resultData) => {
+  const result = await apiRequest('/results', {
+    method: 'POST',
+    body: resultData
+  });
+
+  await notifyResultListeners();
+  return result;
+};
+
+export const deleteResult = async (resultId) => {
+  const result = await apiRequest(`/results/${resultId}`, {
+    method: 'DELETE'
+  });
+
+  await notifyResultListeners();
+  return result;
+};
+
+export const getResultsCount = async () => apiRequest('/results/count');
 
 export const subscribeToResultsByStudentId = (studentId, callback) => {
-  const resultsQuery = query(resultsCollection, where('studentId', '==', studentId));
+  const listeners = resultByStudentListeners.get(studentId) ?? new Set();
+  listeners.add(callback);
+  resultByStudentListeners.set(studentId, listeners);
 
-  return onSnapshot(resultsQuery, (snapshot) => {
-    const records = snapshot.docs
-      .map((record) => {
-        const data = record.data();
+  apiRequest(`/results/student/${studentId}`)
+    .then((records) => callback(records))
+    .catch((error) => {
+      console.error(error);
+      callback([]);
+    });
 
-        return {
-          id: record.id,
-          ...data,
-          createdAt: data.createdAt?.toDate?.()?.toISOString() ?? null
-        };
-      })
-      .sort((first, second) => {
-        const firstDate = first.createdAt ?? '';
-        const secondDate = second.createdAt ?? '';
-        return secondDate.localeCompare(firstDate);
-      });
+  return () => {
+    const currentListeners = resultByStudentListeners.get(studentId);
 
-    callback(records);
-  });
+    if (!currentListeners) {
+      return;
+    }
+
+    currentListeners.delete(callback);
+
+    if (!currentListeners.size) {
+      resultByStudentListeners.delete(studentId);
+    }
+  };
 };

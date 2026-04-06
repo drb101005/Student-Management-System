@@ -1,14 +1,17 @@
 # Student Management System
 
-A fast MVP Student Management System built with React, Vite, Tailwind CSS, React Router, Firebase Auth, and Cloud Firestore.
+A fast Student Management System built with React, Vite, Tailwind CSS, React Router, Firebase Auth, and Cloud Firestore.
 
 ## Features
 
-- Admin email/password login
-- Protected dashboard routes
+- Admin, teacher, and student login
+- Student signup / create account
+- Role-based protected routes
 - Student CRUD with search and detail view
 - Attendance tracking by date
 - Results management with grade calculation
+- Teacher account creation from the admin page
+- Separate student and teacher dashboards
 - Vercel-ready single page app routing
 
 ## 1. Install dependencies
@@ -38,8 +41,11 @@ In the Firebase console:
 1. Create a web app inside your Firebase project.
 2. Enable **Authentication > Sign-in method > Email/Password**.
 3. Create a Firestore database.
-4. Add one admin user in **Authentication > Users**.
-5. Paste the Firebase web app credentials into `.env`.
+4. Paste the Firebase web app credentials into `.env`.
+5. You can either create accounts manually in Firebase Auth or use the in-app flows:
+   - Use the login page button to create the default admin `admin@gmail.com / admin123`
+   - Use the admin page to create teacher accounts
+   - Use the student signup form to create student accounts
 
 ## 4. Run locally
 
@@ -55,13 +61,16 @@ npm run build
 
 ## Firestore collections used
 
+- `users`
 - `students`
+- `teachers`
 - `attendance`
 - `results`
 
 ## Suggested Firestore rules for MVP
 
-These are intentionally simple for a single-admin MVP:
+These are intentionally simple starter rules. For real production role security, update them to enforce
+role-based access using the `users` collection:
 
 ```txt
 rules_version = '2';
@@ -73,6 +82,21 @@ service cloud.firestore {
   }
 }
 ```
+
+## Default Admin
+
+The app includes a bootstrap flow for this default admin account:
+
+- Email: `admin@gmail.com`
+- Password: `admin123`
+
+Open the login page and use the **Create Default Admin** button once for your Firebase project.
+
+## Role Flows
+
+- Admin: login, manage students, attendance, results, and create teacher accounts
+- Teacher: login and access the teacher dashboard plus student, attendance, and results modules
+- Student: sign up, log in, and access a separate student dashboard with personal attendance and result data
 
 ## Deploying to Vercel
 

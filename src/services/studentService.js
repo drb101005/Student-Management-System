@@ -1,89 +1,54 @@
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  where,
-  updateDoc
-} from 'firebase/firestore';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../firebase/config';
-import { saveUserProfile } from './userService';
+import { apiRequest } from './apiClient';
 
-const studentsCollection = collection(db, 'students');
+const studentListeners = new Set();
 
-const mapDocument = (snapshot) => {
-  const data = snapshot.data();
-
-  return {
-    id: snapshot.id,
-    ...data,
-    createdAt: data.createdAt?.toDate?.()?.toISOString() ?? null
-  };
+const notifyStudentListeners = async () => {
+  const students = await apiRequest('/students');
+  studentListeners.forEach((listener) => listener(students));
 };
 
 export const subscribeToStudents = (callback) => {
-  const studentsQuery = query(studentsCollection, orderBy('createdAt', 'desc'));
+  studentListeners.add(callback);
 
-  return onSnapshot(studentsQuery, (snapshot) => {
-    callback(snapshot.docs.map(mapDocument));
-  });
-};
-
-export const createStudent = (studentData) =>
-  addDoc(studentsCollection, {
-    ...studentData,
-    createdAt: serverTimestamp()
+  notifyStudentListeners().catch((error) => {
+    console.error(error);
+    callback([]);
   });
 
-export const registerStudentAccount = async ({ password, ...studentData }) => {
-  const credentials = await createUserWithEmailAndPassword(auth, studentData.email, password);
-  const uid = credentials.user.uid;
+  return () => {
+    studentListeners.delete(callback);
+  };
+};
 
-  await saveUserProfile(uid, {
-    role: 'student',
-    fullName: studentData.fullName,
-    email: studentData.email,
-    studentId: studentData.studentId,
-    studentDocId: uid
+export const createStudent = async (studentData) => {
+  const student = await apiRequest('/students', {
+    method: 'POST',
+    body: studentData
   });
 
-  await setDoc(doc(db, 'students', uid), {
-    ...studentData,
-    authUid: uid,
-    role: 'student',
-    createdAt: serverTimestamp()
+  await notifyStudentListeners();
+  return student;
+};
+
+export const updateStudent = async (studentDocId, studentData) => {
+  const student = await apiRequest(`/students/${studentDocId}`, {
+    method: 'PATCH',
+    body: studentData
   });
 
-  return credentials.user;
+  await notifyStudentListeners();
+  return student;
 };
 
-export const updateStudent = (studentDocId, studentData) =>
-  updateDoc(doc(db, 'students', studentDocId), studentData);
+export const deleteStudent = async (studentDocId) => {
+  const result = await apiRequest(`/students/${studentDocId}`, {
+    method: 'DELETE'
+  });
 
-export const deleteStudent = (studentDocId) => deleteDoc(doc(db, 'students', studentDocId));
-
-export const getStudentsCount = async () => {
-  const snapshot = await getDocs(studentsCollection);
-  return snapshot.size;
+  await notifyStudentListeners();
+  return result;
 };
 
-export const getStudentRecordByAuthUid = async (uid) => {
-  const studentDoc = await getDoc(doc(db, 'students', uid));
+export const getStudentsCount = async () => apiRequest('/students/count');
 
-  if (studentDoc.exists()) {
-    return mapDocument(studentDoc);
-  }
-
-  const fallbackQuery = query(studentsCollection, where('authUid', '==', uid));
-  const fallbackSnapshot = await getDocs(fallbackQuery);
-
-  return fallbackSnapshot.docs[0] ? mapDocument(fallbackSnapshot.docs[0]) : null;
-};
+export const getCurrentStudentRecord = () => apiRequest('/students/me');

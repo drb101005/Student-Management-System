@@ -69,7 +69,7 @@ const Dashboard = () => {
               <p className="mt-6 font-display text-5xl font-bold text-white">
                 {loading ? '...' : stats[card.key]}
               </p>
-              <p className="mt-3 text-sm text-slate-300">Live total from your Firestore MVP collections.</p>
+              <p className="mt-3 text-sm text-slate-300">Live total from your local backend database.</p>
             </div>
           </article>
         ))}
@@ -80,9 +80,9 @@ const Dashboard = () => {
           <p className="text-xs uppercase tracking-[0.3em] text-teal-300">How This MVP Works</p>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {[
-              ['Authentication', 'Only logged-in admins can access the app.'],
-              ['Firestore', 'Students, attendance, and results live in three core collections.'],
-              ['Deployment', 'The app is Vercel-ready with a simple client-side routing rewrite.']
+              ['Authentication', 'JWT keeps each locally hosted account scoped to its role.'],
+              ['Database', 'Students, attendance, and results now live in your local SQLite store.'],
+              ['Backend', 'NestJS serves the API that the frontend talks to on localhost.']
             ].map(([title, description]) => (
               <div key={title} className="panel-muted p-5">
                 <p className="font-display text-lg font-semibold text-white">{title}</p>
@@ -96,13 +96,13 @@ const Dashboard = () => {
           <p className="text-xs uppercase tracking-[0.3em] text-cyan-300">Quick Checklist</p>
           <ul className="mt-5 space-y-4 text-sm text-slate-300">
             <li className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              Add your Firebase keys into `.env`.
+              Start the NestJS backend in the `backend` folder.
             </li>
             <li className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              Enable Email/Password auth and create your admin user.
+              Run the Vite frontend in the repo root.
             </li>
             <li className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              Start creating student, attendance, and result records.
+              Sign in with the seeded admin or teacher account and explore the mock data.
             </li>
           </ul>
         </div>
@@ -112,4 +112,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

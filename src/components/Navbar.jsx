@@ -1,4 +1,6 @@
-const Navbar = ({ user, onMenuClick, onLogout }) => (
+import { ROLE_LABELS } from '../utils/roles';
+
+const Navbar = ({ user, profile, onMenuClick, onLogout }) => (
   <header className="panel sticky top-4 z-30 flex items-center justify-between gap-4 px-5 py-4">
     <div className="flex items-center gap-3">
       <button
@@ -17,7 +19,9 @@ const Navbar = ({ user, onMenuClick, onLogout }) => (
 
     <div className="flex items-center gap-3">
       <div className="hidden text-right sm:block">
-        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Logged In</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+          {ROLE_LABELS[profile?.role] ?? 'User'}
+        </p>
         <p className="text-sm font-medium text-slate-100">{user?.email}</p>
       </div>
       <button type="button" onClick={onLogout} className="btn-primary px-4 py-2 text-sm">
@@ -28,4 +32,3 @@ const Navbar = ({ user, onMenuClick, onLogout }) => (
 );
 
 export default Navbar;
-

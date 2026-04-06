@@ -1,63 +1,79 @@
-import {
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  where
-} from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { apiRequest } from './apiClient';
 
-const attendanceCollection = collection(db, 'attendance');
+const attendanceListeners = new Set();
+const attendanceByStudentListeners = new Map();
 
-export const subscribeToAttendance = (callback) => {
-  const attendanceQuery = query(attendanceCollection, orderBy('date', 'desc'));
+const notifyAttendanceListeners = async () => {
+  const records = await apiRequest('/attendance');
 
-  return onSnapshot(attendanceQuery, (snapshot) => {
-    callback(
-      snapshot.docs.map((record) => ({
-        id: record.id,
-        ...record.data()
-      }))
-    );
-  });
-};
+  attendanceListeners.forEach((listener) => listener(records));
 
-export const saveAttendanceRecord = async (attendanceData) => {
-  const recordId = `${attendanceData.studentId}_${attendanceData.date}`;
-
-  return setDoc(
-    doc(db, 'attendance', recordId),
-    {
-      ...attendanceData,
-      updatedAt: serverTimestamp()
-    },
-    { merge: true }
+  const studentEntries = Array.from(attendanceByStudentListeners.entries());
+  await Promise.all(
+    studentEntries.map(async ([studentId, listeners]) => {
+      const studentRecords = await apiRequest(`/attendance/student/${studentId}`);
+      listeners.forEach((listener) => listener(studentRecords));
+    })
   );
 };
 
-export const deleteAttendanceRecord = (recordId) => deleteDoc(doc(db, 'attendance', recordId));
+export const subscribeToAttendance = (callback) => {
+  attendanceListeners.add(callback);
 
-export const getAttendanceCount = async () => {
-  const snapshot = await getDocs(attendanceCollection);
-  return snapshot.size;
+  notifyAttendanceListeners().catch((error) => {
+    console.error(error);
+    callback([]);
+  });
+
+  return () => {
+    attendanceListeners.delete(callback);
+  };
 };
 
-export const subscribeToAttendanceByStudentId = (studentId, callback) => {
-  const attendanceQuery = query(attendanceCollection, where('studentId', '==', studentId));
-
-  return onSnapshot(attendanceQuery, (snapshot) => {
-    const records = snapshot.docs
-      .map((record) => ({
-        id: record.id,
-        ...record.data()
-      }))
-      .sort((first, second) => second.date.localeCompare(first.date));
-
-    callback(records);
+export const saveAttendanceRecord = async (attendanceData) => {
+  const record = await apiRequest('/attendance', {
+    method: 'POST',
+    body: attendanceData
   });
+
+  await notifyAttendanceListeners();
+  return record;
+};
+
+export const deleteAttendanceRecord = async (recordId) => {
+  const result = await apiRequest(`/attendance/${recordId}`, {
+    method: 'DELETE'
+  });
+
+  await notifyAttendanceListeners();
+  return result;
+};
+
+export const getAttendanceCount = async () => apiRequest('/attendance/count');
+
+export const subscribeToAttendanceByStudentId = (studentId, callback) => {
+  const listeners = attendanceByStudentListeners.get(studentId) ?? new Set();
+  listeners.add(callback);
+  attendanceByStudentListeners.set(studentId, listeners);
+
+  apiRequest(`/attendance/student/${studentId}`)
+    .then((records) => callback(records))
+    .catch((error) => {
+      console.error(error);
+      callback([]);
+    });
+
+  return () => {
+    const currentListeners = attendanceByStudentListeners.get(studentId);
+
+    if (!currentListeners) {
+      return;
+    }
+
+    currentListeners.delete(callback);
+
+    if (!currentListeners.size) {
+      attendanceByStudentListeners.delete(studentId);
+    }
+  };
 };
